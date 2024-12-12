@@ -13,7 +13,7 @@ void writeTable(FILE *f, node *head);
 
 void printResults(node *head, const char **attributeNames, int attrCount);
 
-node *seleetData(char *query, char *schema, node *head, FILE *f);
+node *selectData(char *query, char *schema, node *head, FILE *f);
 
 void insertData(char *query, char *schema, FILE *f);
 

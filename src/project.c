@@ -1,11 +1,11 @@
-#include "a4problem3.h"
+#include "project.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Helper function to create a new linked list node
+// Helper function to create a new linked list node
 node *createNode(int id, int course, int grades) {
-    node *newNode = (node *)malloc(sizeof(node));
+    node *newNode = (node *) malloc(sizeof(node));
     if (newNode == NULL) {
         return NULL;
     }
@@ -16,6 +16,17 @@ node *createNode(int id, int course, int grades) {
     newNode->next = NULL;
 
     return newNode;
+}
+
+// Helper function to free a linked list
+void freeLinkedList(node *head) {
+    node *current = head;
+
+    while (current != NULL) {
+        node *nextNode = current->next;
+        free(current);
+        current = nextNode;
+    }
 }
 
 // Reads the table from grades.csv and returns a pointer to results linked list
@@ -64,6 +75,7 @@ void writeTable(FILE *f, node *head) {
     }
 }
 
+// !!!! Prints all columns regardless of the select clause !!!!
 // Prints the results linked list as tab-separated values
 void printResults(node *head, const char **attributeNames, int attrCount) {
     node *current = head;
@@ -194,7 +206,7 @@ int parseSelect(char *selectClause, char **attributeNames) {
     // Tokenize the string
     char *token = strtok(s, ", ");
     while (token != NULL) {
-        attributeNames[i] = (char *)malloc(100 * sizeof(char));
+        attributeNames[i] = (char *) malloc(100 * sizeof(char));
         strcpy(attributeNames[i], token);
         i++;
         token = strtok(NULL, ", ");
@@ -233,7 +245,7 @@ void parseWhere(char *whereClause, char *conditionCol, char *conditionOp, int *c
         conditionOp[0] = '\0';
         *conditionVal = 0;
     } else {
-        *conditionVal = (int)val;
+        *conditionVal = (int) val;
     }
 }
 
@@ -259,7 +271,7 @@ int parseSchema(char *schema, char *tableName, char **attributeNames) {
     int i = 0;
     char *token = strtok(columnsStart, ", ");
     while (token != NULL) {
-        attributeNames[i] = (char *)malloc(100 * sizeof(char));
+        attributeNames[i] = (char *) malloc(100 * sizeof(char));
         strcpy(attributeNames[i], token);
         i++;
         token = strtok(NULL, ", ");
@@ -443,5 +455,135 @@ int **runQuery(char *query, char *schema, int **table, int nrows, int ncols) {
     free(conditionVal);
 
     return result;
+}
+
+// Helper function to check if a node matches the condition in the where clause
+int matchesCondition(node *current, const char *conditionCol, const char *conditionOp, int conditionVal) {
+    int value;
+
+    // Determine which column to check
+    if (strcmp(conditionCol, "id") == 0) {
+        value = current->id;
+    } else if (strcmp(conditionCol, "course") == 0) {
+        value = current->course;
+    } else if (strcmp(conditionCol, "grade") == 0) {
+        value = current->grades;
+    } else {
+        return 0; // Invalid column name
+    }
+
+    // Compare the value with the condition
+    if (strcmp(conditionOp, ">") == 0) {
+        return value > conditionVal;
+    } else if (strcmp(conditionOp, "<") == 0) {
+        return value < conditionVal;
+    } else if (strcmp(conditionOp, "=") == 0) {
+        return value == conditionVal;
+    } else if (strcmp(conditionOp, ">=") == 0) {
+        return value >= conditionVal;
+    } else if (strcmp(conditionOp, "<=") == 0) {
+        return value <= conditionVal;
+    } else if (strcmp(conditionOp, "!=") == 0) {
+        return value != conditionVal;
+    } else {
+        return 0; // Invalid operator
+    }
+}
+
+node *selectData(char *query, char *schema, node *head, FILE *f) {
+    // Check if the query is valid
+    if (!isValidQuery(query, schema)) {
+        return NULL;
+    }
+
+    // Parse the query
+    char *selectClause = malloc(100 * sizeof(char));
+    char *fromClause = malloc(100 * sizeof(char));
+    char *whereClause = malloc(100 * sizeof(char));
+    parseQuery(query, selectClause, fromClause, whereClause);
+
+    // Parse the select clause to get the column names
+    char **selectColumns = malloc(100 * sizeof(char *));
+    int numSelectColumns = parseSelect(selectClause, selectColumns);
+
+    // Parse the from clause to get the table name
+    char *tableName = malloc(100 * sizeof(char));
+    parseFrom(fromClause, tableName);
+
+    char *conditionCol = malloc(100 * sizeof(char));
+    char *conditionOp = malloc(100 * sizeof(char));
+    int *conditionVal = malloc(sizeof(int));
+
+    // Parse the where clause to get the condition column, operator, and value
+    if (whereClause != NULL) {
+        parseWhere(whereClause, conditionCol, conditionOp, conditionVal);
+    }
+
+    // Read the table
+    head = readTable(f, NULL);
+
+
+    // !!!! ADD FUNCTIONALITY FOR ORDER BY !!!!
+    node *current = head;
+    node *resultHead = NULL;
+    node *resultCurrent = NULL;
+    if (whereClause != NULL) {
+        while (current != NULL) {
+            // Check if the current node matches the where clause
+            if (!matchesCondition(current, conditionCol, conditionOp, *conditionVal)) {
+                current = current->next;
+                continue;
+            }
+
+            // Create a new node
+            node *newNode = (node *) malloc(sizeof(node));
+            newNode->id, newNode->course, newNode->grades = 0;
+            if (newNode == NULL) {
+                return NULL;
+            }
+
+            // Copy the selected columns into the new node
+            for (int i = 0; i < numSelectColumns; i++) {
+                if (strcmp(selectColumns[i], "id") == 0) {
+                    newNode->id = current->id;
+                } else if (strcmp(selectColumns[i], "course") == 0) {
+                    newNode->course = current->course;
+                } else if (strcmp(selectColumns[i], "grades") == 0) {
+                    newNode->grades = current->grades;
+                }
+            }
+            newNode->next = NULL;
+
+            // Add the node to the result linked list
+            if (resultHead == NULL) {
+                resultHead = newNode;
+                resultCurrent = resultHead;
+            } else {
+                resultCurrent->next = newNode;
+                resultCurrent = resultCurrent->next;
+            }
+
+            current = current->next;
+        }
+    }
+
+    free(selectClause);
+    free(fromClause);
+    free(whereClause);
+    for (int i = 0; i < numSelectColumns; i++) {
+        free(selectColumns[i]);
+    }
+    free(selectColumns);
+    free(tableName);
+    free(conditionCol);
+    free(conditionOp);
+    free(conditionVal);
+
+    if (whereClause != NULL) {
+        freeLinkedList(head);
+        return resultHead;
+    }
+
+    return head;
 }
 
