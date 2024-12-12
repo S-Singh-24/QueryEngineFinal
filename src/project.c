@@ -75,7 +75,6 @@ void writeTable(FILE *f, node *head) {
     }
 }
 
-// !!!! Prints all columns regardless of the select clause !!!!
 // Prints the results linked list as tab-separated values
 void printResults(node *head, const char **attributeNames, int attrCount) {
     node *current = head;
@@ -93,7 +92,21 @@ void printResults(node *head, const char **attributeNames, int attrCount) {
 
     // Print the results
     while (current != NULL) {
-        printf("%d\t%d\t%d\n", current->id, current->course, current->grades);
+        for (int i = 0; i < attrCount; i++) {
+            if (strcmp(attributeNames[i], "id") == 0) {
+                printf("%d", current->id);
+            } else if (strcmp(attributeNames[i], "course") == 0) {
+                printf("%d", current->course);
+            } else if (strcmp(attributeNames[i], "grades") == 0) {
+                printf("%d", current->grades);
+            }
+
+            // Print a tab if not the last column
+            if (i < attrCount - 1) {
+                printf("\t");
+            }
+        }
+        printf("\n");
         current = current->next;
     }
 }
