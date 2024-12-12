@@ -385,55 +385,61 @@ int **runQuery(char *query, char *schema, int **table, int nrows, int ncols) {
         return NULL;
     }
 
-    // Allocate memory for the result
-    int **result = malloc(nrows * sizeof(int *));
-    for (int i = 0; i < nrows; i++) {
-        result[i] = malloc(ncols * sizeof(int));
-    }
-
-    // Parse the query
-    char *selectClause = malloc(100 * sizeof(char));
-    char *fromClause = malloc(100 * sizeof(char));
-    char *whereClause = malloc(100 * sizeof(char));
+    // Parse the query into clauses
+    char selectClause[100], fromClause[100], whereClause[100] = {0};
     parseQuery(query, selectClause, fromClause, whereClause);
 
-    // Parse the select clause to ge the column names
-    char **selectColumns = malloc(100 * sizeof(char *));
+    // Parse the select clause
+    char *selectColumns[100];
     int numSelectColumns = parseSelect(selectClause, selectColumns);
 
-    // Parse the from clause to get the table name
-    char *tableName = malloc(100 * sizeof(char));
+    // Parse the from clause
+    char tableName[100];
     parseFrom(fromClause, tableName);
 
-    // Parse the where clause to get the condition column, operator, and value
-    char *conditionCol = malloc(100 * sizeof(char));
-    char *conditionOp = malloc(100 * sizeof(char));
-    int *conditionVal = malloc(sizeof(int));
-    parseWhere(whereClause, conditionCol, conditionOp, conditionVal);
-
-    char **schemaColumns = malloc(100 * sizeof(char *));
+    // Parse the schema
+    char *schemaColumns[100];
     int numSchemaColumns = parseSchema(schema, tableName, schemaColumns);
 
-    // Find the index of the condition column
+    // Parse the where clause (if present)
+    char conditionCol[100] = {0}, conditionOp[10] = {0};
+    int conditionVal = 0;
+    int hasCondition = strlen(whereClause) > 0;
+    if (hasCondition) {
+        parseWhere(whereClause, conditionCol, conditionOp, &conditionVal);
+    }
+
+    // Find column indices
     int conditionColIndex = -1;
-    for (int i = 0; i < numSchemaColumns; i++) {
-        if (strcmp(conditionCol, schemaColumns[i]) == 0) {
-            conditionColIndex = i;
-            break;
+    if (hasCondition) {
+        for (int i = 0; i < numSchemaColumns; i++) {
+            if (strcmp(conditionCol, schemaColumns[i]) == 0) {
+                conditionColIndex = i;
+                break;
+            }
+        }
+        if (conditionColIndex == -1) {
+            return NULL; // Invalid condition column
         }
     }
 
+    // Allocate memory for result
+    int **result = malloc(nrows * sizeof(int *));
     int resultRows = 0;
-    // For each row in the input table
+
+    // Process rows in the table
     for (int i = 0; i < nrows; i++) {
-        // Check if the operator is '>' and the value is greater than the condition value
-        if ((strcmp(conditionOp, ">") == 0 && table[i][conditionColIndex] > *conditionVal) ||
-            (strcmp(conditionOp, "<") == 0 && table[i][conditionColIndex] < *conditionVal) ||
-            (strcmp(conditionOp, "=") == 0 && table[i][conditionColIndex] == *conditionVal) ||
-            (strcmp(conditionOp, ">=") == 0 && table[i][conditionColIndex] >= *conditionVal) ||
-            (strcmp(conditionOp, "<=") == 0 && table[i][conditionColIndex] <= *conditionVal) ||
-            (strcmp(conditionOp, "!=") == 0 && table[i][conditionColIndex] != *conditionVal)) {
-            // Copy the selected columns into the result
+        // Check condition
+        int meetsCondition = !hasCondition || 
+            (strcmp(conditionOp, ">") == 0 && table[i][conditionColIndex] > conditionVal) ||
+            (strcmp(conditionOp, "<") == 0 && table[i][conditionColIndex] < conditionVal) ||
+            (strcmp(conditionOp, "=") == 0 && table[i][conditionColIndex] == conditionVal) ||
+            (strcmp(conditionOp, ">=") == 0 && table[i][conditionColIndex] >= conditionVal) ||
+            (strcmp(conditionOp, "<=") == 0 && table[i][conditionColIndex] <= conditionVal) ||
+            (strcmp(conditionOp, "!=") == 0 && table[i][conditionColIndex] != conditionVal);
+
+        if (meetsCondition) {
+            result[resultRows] = malloc(numSelectColumns * sizeof(int));
             for (int j = 0; j < numSelectColumns; j++) {
                 for (int k = 0; k < numSchemaColumns; k++) {
                     if (strcmp(selectColumns[j], schemaColumns[k]) == 0) {
@@ -441,35 +447,20 @@ int **runQuery(char *query, char *schema, int **table, int nrows, int ncols) {
                     }
                 }
             }
-
             resultRows++;
         }
     }
 
-    // Reallocate the result to the correct size
+    // Reallocate memory for result
     result = realloc(result, resultRows * sizeof(int *));
-    for (int i = 0; i < resultRows; i++) {
-        result[i] = realloc(result[i], numSelectColumns * sizeof(int));
-    }
-
-    free(selectClause);
-    free(fromClause);
-    free(whereClause);
-    for (int i = 0; i < numSelectColumns; i++) {
-        free(selectColumns[i]);
-    }
-    free(selectColumns);
-    for (int i = 0; i < numSchemaColumns; i++) {
-        free(schemaColumns[i]);
-    }
-    free(schemaColumns);
-    free(tableName);
-    free(conditionCol);
-    free(conditionOp);
-    free(conditionVal);
+    
+    // Clean up dynamic memory
+    for (int i = 0; i < numSelectColumns; i++) free(selectColumns[i]);
+    for (int i = 0; i < numSchemaColumns; i++) free(schemaColumns[i]);
 
     return result;
 }
+
 
 // Helper function to check if a node matches the condition in the where clause
 int matchesCondition(node *current, const char *conditionCol, const char *conditionOp, int conditionVal) {
@@ -515,6 +506,7 @@ node *selectData(char *query, char *schema, node *head, FILE *f) {
     char *selectClause = malloc(100 * sizeof(char));
     char *fromClause = malloc(100 * sizeof(char));
     char *whereClause = malloc(100 * sizeof(char));
+    char *orderByCol = malloc(100 * sizeof(char));
     parseQuery(query, selectClause, fromClause, whereClause);
 
     // Parse the select clause to get the column names
@@ -532,6 +524,13 @@ node *selectData(char *query, char *schema, node *head, FILE *f) {
     // Parse the where clause to get the condition column, operator, and value
     if (whereClause != NULL) {
         parseWhere(whereClause, conditionCol, conditionOp, conditionVal);
+    }
+
+    // Parse order by clause
+    int hasOrderBy = 0;
+    if (strstr(query, "ORDER BY")) {
+        hasOrderBy = 1;
+        sscanf(strstr(query, "ORDER BY") + 9, "%s", orderByCol);
     }
 
     // Read the table
