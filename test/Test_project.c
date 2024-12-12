@@ -7,7 +7,7 @@ void setUp(void) {}
 void tearDown(void) {}
 
 void test_readTable_returnsLinkedList() {
-    FILE *f = fopen("/home/aydanbondurant/CLionProjects/assignement4/src/grades.csv", "r");
+    FILE *f = fopen("../src/grades.csv", "r");
     node *head = readTable(f, NULL);
 
     TEST_ASSERT_NOT_NULL(head);
@@ -21,15 +21,15 @@ void test_readTable_returnsLinkedList() {
 }
 
 void test_writeTable() {
-    FILE *f = fopen("/home/aydanbondurant/CLionProjects/assignement4/src/grades.csv", "r");
+    FILE *f = fopen("../src/grades.csv", "r");
     node *head = readTable(f, NULL);
     fclose(f);
 
-    FILE *f2 = fopen("/home/aydanbondurant/CLionProjects/assignement4/src/test.csv", "w");
+    FILE *f2 = fopen("../src/test.csv", "w");
     writeTable(f2, head);
     fclose(f2);
 
-    FILE *f3 = fopen("/home/aydanbondurant/CLionProjects/assignement4/src/test.csv", "r");
+    FILE *f3 = fopen("../src/test.csv", "r");
     node *head2 = readTable(f3, NULL);
 
     TEST_ASSERT_NOT_NULL(head2);
