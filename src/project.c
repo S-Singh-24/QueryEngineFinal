@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Helper function to create a new linked list node
+// Helper function to create a new linked list node
 node *createNode(int id, int course, int grades) {
     node *newNode = (node *) malloc(sizeof(node));
     if (newNode == NULL) {
@@ -68,6 +68,7 @@ void writeTable(FILE *f, node *head) {
     node *current = head;
 
     // While there are nodes to write
+    fprintf(f, "id,course,grade\n");
     while (current != NULL) {
         // Write the node to the file
         fprintf(f, "%d,%d,%d\n", current->id, current->course, current->grades);
@@ -97,7 +98,7 @@ void printResults(node *head, const char **attributeNames, int attrCount) {
                 printf("%d", current->id);
             } else if (strcmp(attributeNames[i], "course") == 0) {
                 printf("%d", current->course);
-            } else if (strcmp(attributeNames[i], "grades") == 0) {
+            } else if (strcmp(attributeNames[i], "grade") == 0) {
                 printf("%d", current->grades);
             }
 
@@ -503,6 +504,7 @@ int matchesCondition(node *current, const char *conditionCol, const char *condit
     }
 }
 
+// Selects nodes from a linked list based on a query
 node *selectData(char *query, char *schema, node *head, FILE *f) {
     // Check if the query is valid
     if (!isValidQuery(query, schema)) {
@@ -534,7 +536,6 @@ node *selectData(char *query, char *schema, node *head, FILE *f) {
 
     // Read the table
     head = readTable(f, NULL);
-
 
     // !!!! ADD FUNCTIONALITY FOR ORDER BY !!!!
     node *current = head;
@@ -647,4 +648,70 @@ void insertData(char *query, char *schema, FILE *f) {
     free(attributeNames);
     free(valuesStr);
     free(values);
+}
+
+// Deletes rows from a linked list based on a query
+node *deleteData(char *query, char *schema, node *head, FILE *f) {
+    // Parse the query to get from and where clauses
+    char *fromClause = malloc(100 * sizeof(char));
+    char *whereClause = malloc(100 * sizeof(char));
+    char *tableName = malloc(100 * sizeof(char));
+
+    char *fromStart = strstr(query, "FROM") + 5;
+    char *fromEnd = strstr(fromStart, "WHERE");
+    strncpy(fromClause, fromStart, fromEnd - fromStart);
+    fromClause[fromEnd - fromStart] = '\0';
+
+    char *whereStart = strstr(fromEnd, "WHERE") + 6;
+    strcpy(whereClause, whereStart);
+
+    parseFrom(fromClause, tableName);
+
+    // If there is no where clause, delete all rows
+    if (whereClause == NULL) {
+        freeLinkedList(head);
+        return NULL;
+    }
+
+    // Parse the where clause to get the condition column, operator, and value
+    char *conditionCol = malloc(100 * sizeof(char));
+    char *conditionOp = malloc(100 * sizeof(char));
+    int *conditionVal = malloc(sizeof(int));
+    parseWhere(whereClause, conditionCol, conditionOp, conditionVal);
+
+    // Read the table
+    head = readTable(f, NULL);
+
+    // Find the matching nodes and delete them
+    node *current = head;
+    node *prev = NULL;
+    while (current != NULL) {
+        // If the current node doesn't match the condition, move to the next node
+        if (!matchesCondition(current, conditionCol, conditionOp, *conditionVal)) {
+            prev = current;
+            current = current->next;
+            continue;
+        }
+
+        // If the current node is the head, update the head
+        if (prev == NULL) {
+            head = current->next;
+        } else {
+            prev->next = current->next;
+        }
+
+        // Free the current node
+        node *temp = current;
+        current = current->next;
+        free(temp);
+    }
+
+    free(fromClause);
+    free(whereClause);
+    free(tableName);
+    free(conditionCol);
+    free(conditionOp);
+    free(conditionVal);
+
+    return head;
 }
