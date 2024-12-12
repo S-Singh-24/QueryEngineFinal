@@ -600,3 +600,51 @@ node *selectData(char *query, char *schema, node *head, FILE *f) {
     return head;
 }
 
+// Inserts a new row into a .csv file
+void insertData(char *query, char *schema, FILE *f) {
+    // Parse the schema
+    char *tableName = malloc(100 * sizeof(char));
+    char **attributeNames = malloc(100 * sizeof(char *));
+    char **values = malloc(100 * sizeof(char *));
+
+    int numAttributes = parseSchema(schema, tableName, attributeNames);
+
+    // Find the start of the values
+    char *valuesStart = strstr(query, "VALUES") + 8;
+    char *valuesEnd = strchr(valuesStart, ')');
+
+    // Remove the parentheses
+    char *valuesStr = malloc(100 * sizeof(char));
+    strncpy(valuesStr, valuesStart, valuesEnd - valuesStart);
+    valuesStr[valuesEnd - valuesStart] = '\0';
+
+    // Tokenize the values
+    int i = 0;
+    char *token = strtok(valuesStr, ", ");
+    while (token != NULL) {
+        values[i] = (char *) malloc(100 * sizeof(char));
+        strcpy(values[i], token);
+        i++;
+        token = strtok(NULL, ", ");
+    }
+
+    // Write the values to the file
+    for (i = 0; i < numAttributes; i++) {
+        fprintf(f, "%s", values[i]);
+
+        // Print a comma if not the last value
+        if (i < numAttributes - 1) {
+            fprintf(f, ",");
+        }
+    }
+    fprintf(f, "\n");
+
+    free(tableName);
+    for (int i = 0; i < numAttributes; i++) {
+        free(attributeNames[i]);
+        free(values[i]);
+    }
+    free(attributeNames);
+    free(valuesStr);
+    free(values);
+}
