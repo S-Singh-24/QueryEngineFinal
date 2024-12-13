@@ -31,6 +31,12 @@ void freeLinkedList(node *head) {
 
 // Reads the table from grades.csv and returns a pointer to results linked list
 node *readTable(FILE *f, node *head) {
+
+    // If the file is not found, return NULL
+    if (f == NULL) {
+        return NULL;
+    }
+
     char line[11];
     head = NULL;
     node *current = NULL;
