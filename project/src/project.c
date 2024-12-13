@@ -66,25 +66,22 @@ node *readTable(FILE *f, node *head) {
 // Writes the linked list to a .csv file
 void writeTable(FILE *f, node *head) {
     if (f == NULL) {
-    fprintf(stderr, "Error.\n");
-    return;
-    }
-
-    if (fprintf(f, "id,course,grade\n") < 0) {
-        fprintf(stderr, "Error.\n");
+        fprintf(stderr, "Error.");
         return;
     }
 
     node *current = head;
 
-    // While there are nodes to write
-    fprintf(f, "id,course,grade\n");
+    // Write data rows 
     while (current != NULL) {
-        // Write the node to the file
-        fprintf(f, "%d,%d,%d\n", current->id, current->course, current->grade);
+        if (fprintf(f, "%d,%d,%d\n", current->id, current->course, current->grade) < 0) {
+            fprintf(stderr, "Error.");
+            return;
+        }
         current = current->next;
     }
 }
+
 
 // Prints the results linked list as tab-separated values
 void printResults(node *head, const char **attributeNames, int attrCount) {
