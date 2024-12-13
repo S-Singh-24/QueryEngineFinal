@@ -65,6 +65,16 @@ node *readTable(FILE *f, node *head) {
 
 // Writes the linked list to a .csv file
 void writeTable(FILE *f, node *head) {
+    if (f == NULL) {
+    fprintf(stderr, "Error.\n");
+    return;
+    }
+
+    if (fprintf(f, "id,course,grade\n") < 0) {
+        fprintf(stderr, "Error.\n");
+        return;
+    }
+
     node *current = head;
 
     // While there are nodes to write
